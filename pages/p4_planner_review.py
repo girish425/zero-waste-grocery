@@ -27,6 +27,7 @@ from copy import deepcopy
 from typing import Dict, Any, List
 
 from components.ui import render_hero, render_kpi_card, get_action_badge_html, get_urgency_badge_html
+from agents.coordinator import CoordinatorAgent
 
 def render_planner_review_page():
     render_hero(
@@ -237,12 +238,29 @@ def render_planner_review_page():
         filtered_proposals.append(p)
 
     # 7. Batch Operations Bar
-    b_col1, b_col2, b_col3 = st.columns([1.6, 1.2, 1.2])
+    b_col1, b_col2, b_col3, b_col4 = st.columns([1.1, 1.2, 1.3, 1.3])
     with b_col1:
-        st.caption(f"Displaying **{len(filtered_proposals)}** of {len(proposals)} recommendations matching active filters.")
+        st.caption(f"Displaying **{len(filtered_proposals)}** of {len(proposals)} recommendations.")
 
     with b_col2:
-        if st.button("⚡ Batch Approve All Urgent (≤ 24h)", use_container_width=True, key="btn_batch_urgent"):
+        if st.button("🤖 Run AI Agents", use_container_width=True, key="btn_run_agents_hub"):
+            inv_df = st.session_state.get("inventory_df", None)
+            if inv_df is not None and not inv_df.empty:
+                with st.spinner("Executing autonomous Multi-Agent deliberation across all batches..."):
+                    coord = CoordinatorAgent()
+                    new_proposals = []
+                    for _, row in inv_df.iterrows():
+                        p = coord.reconcile_batch(row.to_dict(), inv_df)
+                        new_proposals.append(p)
+                    st.session_state.coordinator_proposals = new_proposals
+                    st.session_state.data_refreshed = True
+                st.toast(f"✅ Generated {len(new_proposals)} fresh agent recommendations!", icon="🤖")
+                st.rerun()
+            else:
+                st.toast("📂 Ingest inventory data first to run agent deliberation", icon="📂")
+
+    with b_col3:
+        if st.button("⚡ Batch Approve Urgent (≤ 24h)", use_container_width=True, key="btn_batch_urgent"):
             c_urgent = 0
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for p in proposals:
@@ -254,12 +272,12 @@ def render_planner_review_page():
                     p["review_reason"] = "Batch authorized: Critical shelf-life expiry"
                     c_urgent += 1
             if c_urgent > 0:
-                st.success(f"Batch approved {c_urgent} critical recommendation(s) as {reviewer_label}!")
+                st.toast(f"⚡ Batch approved {c_urgent} critical recommendation(s) as {reviewer_label}!", icon="⚡")
                 st.rerun()
             else:
-                st.info("No pending critical recommendations to batch approve.")
+                st.toast("ℹ️ No pending critical recommendations to batch approve.")
 
-    with b_col3:
+    with b_col4:
         if st.button("✅ Approve All Filtered Results", use_container_width=True, type="primary", key="btn_batch_all"):
             c_all = 0
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -272,10 +290,10 @@ def render_planner_review_page():
                     p["review_reason"] = f"Batch authorized filtered queue as {reviewer_label}"
                     c_all += 1
             if c_all > 0:
-                st.success(f"Approved {c_all} filtered recommendation(s) as {reviewer_label}!")
+                st.toast(f"✅ Approved {c_all} filtered recommendation(s) as {reviewer_label}!", icon="✅")
                 st.rerun()
             else:
-                st.info("No pending recommendations in current filter view.")
+                st.toast("ℹ️ No pending recommendations in current filter view.")
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
@@ -398,7 +416,7 @@ def render_planner_review_page():
                     p["approval_status"] = "APPROVED"
                     p["reviewed_by"] = reviewer_label
                     p["reviewed_at"] = ts
-                    p["review_reason"] = "Approved by store manager inside prototype"
+                    p["review_reason"] = f"Approved by {reviewer_label} inside prototype"
                     # Log event
                     if "execution_logs" in st.session_state:
                         st.session_state.execution_logs.append({
@@ -407,8 +425,9 @@ def render_planner_review_page():
                             "action": p["final_action"],
                             "target": f"{p['product_name']} ({p['store_name']})",
                             "status": "APPROVED",
-                            "message": f"Manager approved: {p['action_title']}"
+                            "message": f"Manager approved: {p['action_title']} by {reviewer_label}"
                         })
+                    st.toast(f"✅ Approved: {p['product_name']} ({p['action_title']})", icon="✅")
                     st.rerun()
 
         # Interaction 2: REJECT
@@ -457,15 +476,22 @@ def render_planner_review_page():
                     placeholder="e.g., Customer demand surge expected; hold inventory at full price.",
                     key=f"input_rej_{rec_id}"
                 )
-                if st.button("Confirm Rejection", key=f"btn_confirm_rej_{rec_id}", type="primary"):
-                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    p["review_status"] = "REJECTED"
-                    p["approval_status"] = "OVERRIDDEN"
-                    p["reviewed_by"] = reviewer_label
-                    p["reviewed_at"] = ts
-                    p["review_reason"] = rej_reason or "Overridden / Rejected by store manager"
-                    st.session_state[f"show_reject_{rec_id}"] = False
-                    st.rerun()
+                btn_rej_c1, btn_rej_c2 = st.columns(2)
+                with btn_rej_c1:
+                    if st.button("Confirm Rejection", key=f"btn_confirm_rej_{rec_id}", type="primary", use_container_width=True):
+                        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        p["review_status"] = "REJECTED"
+                        p["approval_status"] = "OVERRIDDEN"
+                        p["reviewed_by"] = reviewer_label
+                        p["reviewed_at"] = ts
+                        p["review_reason"] = rej_reason or f"Overridden / Rejected by {reviewer_label}"
+                        st.session_state[f"show_reject_{rec_id}"] = False
+                        st.toast(f"❌ Rejected proposal for {p['product_name']}", icon="❌")
+                        st.rerun()
+                with btn_rej_c2:
+                    if st.button("Cancel", key=f"btn_cancel_rej_d_{rec_id}", use_container_width=True):
+                        st.session_state[f"show_reject_{rec_id}"] = False
+                        st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
         # Render Modify Input Drawer
@@ -544,20 +570,26 @@ def render_planner_review_page():
                     key=f"input_mod_reason_{rec_id}"
                 )
 
-                if st.button("💾 Save & Authorize Modified Recommendation", key=f"btn_save_mod_{rec_id}", type="primary"):
-                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    p["final_action"] = mod_action_type
-                    p["action_title"] = new_title
-                    p["action_details"] = new_details
-                    p["margin_impact_usd"] = new_margin
-                    p["review_status"] = "MODIFIED"
-                    p["approval_status"] = "APPROVED"
-                    p["reviewed_by"] = reviewer_label
-                    p["reviewed_at"] = ts
-                    p["review_reason"] = mod_reason or "Modified and approved by store manager"
-                    st.session_state[f"show_mod_{rec_id}"] = False
-                    st.success(f"Recommendation modified and authorized for {p['product_name']}!")
-                    st.rerun()
+                btn_mod_c1, btn_mod_c2 = st.columns(2)
+                with btn_mod_c1:
+                    if st.button("💾 Save & Authorize", key=f"btn_save_mod_{rec_id}", type="primary", use_container_width=True):
+                        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        p["final_action"] = mod_action_type
+                        p["action_title"] = new_title
+                        p["action_details"] = new_details
+                        p["margin_impact_usd"] = new_margin
+                        p["review_status"] = "MODIFIED"
+                        p["approval_status"] = "APPROVED"
+                        p["reviewed_by"] = reviewer_label
+                        p["reviewed_at"] = ts
+                        p["review_reason"] = mod_reason or f"Modified and approved by {reviewer_label}"
+                        st.session_state[f"show_mod_{rec_id}"] = False
+                        st.toast(f"✏️ Modified & authorized: {p['product_name']} as {reviewer_label}!", icon="✏️")
+                        st.rerun()
+                with btn_mod_c2:
+                    if st.button("Cancel", key=f"btn_cancel_mod_d_{rec_id}", use_container_width=True):
+                        st.session_state[f"show_mod_{rec_id}"] = False
+                        st.rerun()
 
                 st.markdown("</div>", unsafe_allow_html=True)
 

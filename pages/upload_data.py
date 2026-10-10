@@ -260,14 +260,17 @@ def render_upload_data_page():
                                         st.caption(f"• {w}")
 
                             st.success(f"🎉 Successfully normalized {accepted} inventory items and generated AI recommendations!")
+                            st.toast(f"🎉 Normalized {accepted} items & generated {len(proposals)} AI proposals!", icon="🚀")
 
                             nav_col1, nav_col2 = st.columns(2)
                             with nav_col1:
                                 if st.button("📊 View Results on Dashboard", key="to_dash_norm"):
+                                    st.toast("📊 Opening Dashboard...", icon="📊")
                                     st.session_state.current_page = "📊 Dashboard"
                                     st.rerun()
                             with nav_col2:
                                 if st.button("📦 Inspect in Inventory & Expiry Monitor", key="to_inv_norm"):
+                                    st.toast("📦 Opening Inventory & Expiry Monitor...", icon="📦")
                                     st.session_state.current_page = "📦 Inventory & Expiry"
                                     st.rerun()
 
@@ -391,6 +394,7 @@ def render_upload_data_page():
                         st.session_state.data_refreshed = True
 
                         st.success(f"🎉 Successfully merged and deliberated on {len(harmonized)} active perishable batches!")
+                        st.toast(f"🎉 Merged records & deliberated on {len(harmonized)} batches!", icon="🚀")
                         with st.expander("ℹ️ Harmonization Audit Trail", expanded=True):
                             for n in notes:
                                 st.write(f"• {n}")
@@ -399,10 +403,12 @@ def render_upload_data_page():
                         nav_col1, nav_col2 = st.columns(2)
                         with nav_col1:
                             if st.button("📊 View Dashboard Overview", key="to_dash_m"):
+                                st.toast("📊 Opening Dashboard...", icon="📊")
                                 st.session_state.current_page = "📊 Dashboard"
                                 st.rerun()
                         with nav_col2:
                             if st.button("📋 Review Agent Proposals", key="to_prop_m"):
+                                st.toast("📋 Opening AI Recommendations...", icon="🤖")
                                 st.session_state.current_page = "🤖 AI Recommendations"
                                 st.rerun()
 
@@ -440,6 +446,7 @@ def render_upload_data_page():
                 st.session_state.coordinator_proposals = proposals
                 st.session_state.data_refreshed = True
                 
+            st.toast("✅ Loaded 5-Store Supermarket Network & executed AI Agents!", icon="🌱")
             st.success("✅ Supermarket dataset loaded! Redirecting to Dashboard...")
             st.session_state.current_page = "📊 Dashboard"
             st.rerun()

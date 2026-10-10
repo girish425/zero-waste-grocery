@@ -181,7 +181,8 @@ def render_inventory_page():
                     st.session_state.sales_df = sales_df
                     st.session_state.coordinator_proposals = proposals
                     st.session_state.data_refreshed = True
-                    st.rerun()
+                st.toast("✅ Loaded 5-Store Benchmark Network with real IoT telemetry!", icon="🌱")
+                st.rerun()
         return
 
     # Work with copy to preserve original session state
@@ -592,6 +593,7 @@ def render_inventory_page():
                         st.session_state.coordinator_proposals = proposals
                         st.session_state.validation_summary = res
                         st.session_state.data_refreshed = True
+                        st.toast(f"✅ Ingested {len(valid_df)} products and updated agent recommendations!", icon="📦")
                         st.rerun()
                 else:
                     st.error(f"Ingestion failed: All {res['rejected_count']} rows failed validation.")

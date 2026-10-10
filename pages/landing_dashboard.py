@@ -37,16 +37,52 @@ def render_landing_dashboard_page():
     # 1. Hero Section
     render_landing_hero_banner()
     
-    # Dual Action CTA Buttons directly under hero
-    cta_col1, cta_col2, cta_col_spacer = st.columns([1.5, 1.5, 3.5])
+    # Action CTA Buttons directly under hero
+    cta_col1, cta_col2, cta_col3, cta_col_spacer = st.columns([1.5, 1.5, 1.5, 2.0])
     
     with cta_col1:
         if st.button("🚀 Analyze My Inventory", type="primary", use_container_width=True, key="hero_btn_analyze"):
-            st.session_state.current_page = "📤 Upload Data"
-            st.rerun()
+            inv_df = st.session_state.get("inventory_df", None)
+            if inv_df is not None and not inv_df.empty:
+                with st.spinner("Analyzing inventory and computing Multi-Agent consensus..."):
+                    coord = CoordinatorAgent()
+                    proposals = []
+                    for _, row in inv_df.iterrows():
+                        p = coord.reconcile_batch(row.to_dict(), inv_df)
+                        proposals.append(p)
+                    st.session_state.coordinator_proposals = proposals
+                    st.session_state.data_refreshed = True
+                st.toast(f"✅ Multi-Agent deliberation completed on {len(inv_df)} perishable batches!", icon="🤖")
+                st.session_state.current_page = "🤖 AI Recommendations"
+                st.rerun()
+            else:
+                st.toast("📂 Please upload an inventory dataset to run analysis", icon="📂")
+                st.session_state.current_page = "📤 Upload Data"
+                st.rerun()
             
     with cta_col2:
+        if st.button("🤖 Run AI Agents", type="secondary", use_container_width=True, key="hero_btn_run_agents"):
+            inv_df = st.session_state.get("inventory_df", None)
+            if inv_df is not None and not inv_df.empty:
+                with st.spinner("Dispatching 5 specialized agents to evaluate shelf life & demand..."):
+                    coord = CoordinatorAgent()
+                    proposals = []
+                    for _, row in inv_df.iterrows():
+                        p = coord.reconcile_batch(row.to_dict(), inv_df)
+                        proposals.append(p)
+                    st.session_state.coordinator_proposals = proposals
+                    st.session_state.data_refreshed = True
+                st.toast(f"✅ Reconciled {len(proposals)} proposals into unified actions!", icon="🤖")
+                st.session_state.current_page = "🤖 AI Recommendations"
+                st.rerun()
+            else:
+                st.toast("📂 Ingest inventory data first to run agent deliberation", icon="📂")
+                st.session_state.current_page = "📤 Upload Data"
+                st.rerun()
+
+    with cta_col3:
         if st.button("📊 Explore Full Analytics", type="secondary", use_container_width=True, key="hero_btn_explore"):
+            st.toast("📊 Opening Live Inventory & Expiry Monitor...", icon="📦")
             st.session_state.current_page = "📦 Inventory & Expiry"
             st.rerun()
             

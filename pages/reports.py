@@ -66,31 +66,23 @@ def render_reports_page():
             store_col = cand
             break
 
+    # Store Scope Filter
+    if store_col:
+        store_list = ["All Stores (Chain-Wide)"] + sorted(list(inventory_df[store_col].dropna().astype(str).unique()))
+    else:
+        store_list = ["All Stores (Chain-Wide)"]
+
     st.markdown('<div class="custom-card" style="padding: 14px 20px; margin-bottom: 20px;">', unsafe_allow_html=True)
-    f_col1, f_col2, f_col3 = st.columns([1.5, 1.5, 1.0])
+    f_col1, f_col2, f_col3, f_col4 = st.columns([1.4, 1.3, 0.9, 1.2])
     
     with f_col1:
         if store_col:
-            store_list = ["All Stores (Chain-Wide)"] + sorted(list(inventory_df[store_col].dropna().astype(str).unique()))
             selected_store_filter = st.selectbox("Select Report Store Scope:", store_list, index=0)
         else:
             selected_store_filter = "All Stores (Chain-Wide)"
-            st.selectbox("Select Report Store Scope:", ["All Stores (Chain-Wide)"], index=0, disabled=True)
+            st.selectbox("Select Report Scope:", ["All Stores (Chain-Wide)"], index=0, disabled=True)
 
-    with f_col2:
-        st.markdown(f"""
-        <div style="font-size:0.84rem; color:#64748B; padding-top:1.6rem;">
-            Report Scope: <strong>{selected_store_filter}</strong> &nbsp;|&nbsp; 
-            Timestamp: <strong>{datetime.now().strftime('%Y-%m-%d %H:%M')}</strong>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with f_col3:
-        if st.button("🔄 Refresh Metrics", use_container_width=True):
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Apply Store Scope Filter
+    # Compute Scoped Data based on selection
     if selected_store_filter != "All Stores (Chain-Wide)" and store_col:
         scoped_inv_df = inventory_df[inventory_df[store_col].astype(str) == selected_store_filter].copy()
         scoped_proposals = [p for p in proposals if str(p.get("store_name")) == selected_store_filter or str(p.get("store_id")) == selected_store_filter]
@@ -102,6 +94,33 @@ def render_reports_page():
         scoped_inv_df = inventory_df.copy()
         scoped_proposals = list(proposals)
         scoped_sales_df = sales_df
+
+    with f_col2:
+        st.markdown(f"""
+        <div style="font-size:0.84rem; color:#64748B; padding-top:1.6rem;">
+            Report Scope: <strong>{selected_store_filter}</strong> &nbsp;|&nbsp; 
+            Timestamp: <strong>{datetime.now().strftime('%Y-%m-%d %H:%M')}</strong>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with f_col3:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh", use_container_width=True, key="btn_refresh_report_metrics"):
+            st.toast("✅ Report metrics recalculated and refreshed!", icon="🔄")
+            st.rerun()
+
+    with f_col4:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        top_excel_bytes = export_inventory_workbook(scoped_inv_df, scoped_sales_df)
+        st.download_button(
+            label="📥 Download Report (.xlsx)",
+            data=top_excel_bytes,
+            file_name=f"ZeroWaste_Executive_Audit_{date.today().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="btn_dl_top_report"
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================================
     # SECTION 1: INVENTORY HEALTH SUMMARY
@@ -761,7 +780,21 @@ def render_reports_page():
                 key="dl_recs_csv"
             )
         else:
-            st.button("No Decisions to Export", disabled=True, use_container_width=True, key="dl_recs_dis")
+            empty_cols = [
+                "Recommendation_ID", "SKU", "Product_Name", "Store_Name", "Current_Stock",
+                "Days_To_Expiry", "Proposed_Action", "Action_Title", "Priority",
+                "Responsible_Agent", "Review_Status", "Reviewed_By", "Reviewed_At",
+                "Review_Reason", "Estimated_Margin_Impact_USD", "Estimated_Waste_Saved_Units", "Estimated_Carbon_Saved_KG"
+            ]
+            rec_csv_data = pd.DataFrame(columns=empty_cols).to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Decisions Schema (CSV)",
+                data=rec_csv_data,
+                file_name=f"ZeroWaste_Decisions_Schema_{date.today().isoformat()}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="dl_recs_schema_csv"
+            )
         st.markdown('</div>', unsafe_allow_html=True)
 
     # 3. Certified OpenPyXL Excel Audit Workbook

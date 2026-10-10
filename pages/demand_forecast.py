@@ -54,21 +54,25 @@ def render_demand_forecast_page():
             if st.button("🟢 Full 30-Day POS History\n(Sufficient Data → Scikit-Learn ML)", use_container_width=True, key="btn_test_30d"):
                 st.session_state.sales_df = generate_pos_sales_history(days=30)
                 st.session_state.scenario_name = "Full 30-Day POS History"
+                st.toast("🟢 Loaded 30-Day POS Sales History! Autoregressive ML enabled.", icon="📈")
                 st.rerun()
         with col_t2:
             if st.button("🟡 Moderate 8-Day History\n(Moderate Data → Moving Average)", use_container_width=True, key="btn_test_8d"):
                 st.session_state.sales_df = generate_pos_sales_history(days=8)
                 st.session_state.scenario_name = "Moderate 8-Day History"
+                st.toast("🟡 Loaded 8-Day History! Tier 2 Moving Average enabled.", icon="📊")
                 st.rerun()
         with col_t3:
             if st.button("🔴 Sparse 3-Day History\n(Insufficient Data → Recent Average)", use_container_width=True, key="btn_test_3d"):
                 st.session_state.sales_df = generate_pos_sales_history(days=3)
                 st.session_state.scenario_name = "Sparse 3-Day History"
+                st.toast("🔴 Loaded 3-Day History! Tier 1 Baseline active.", icon="⚠️")
                 st.rerun()
         with col_t4:
             if st.button("⚪ Clear Sales History\n(Simulate Unavailable Sales Data)", use_container_width=True, key="btn_test_0d"):
                 st.session_state.sales_df = pd.DataFrame()
                 st.session_state.scenario_name = "No Sales Data"
+                st.toast("⚪ Cleared sales transactions. Simulating data absence.", icon="ℹ️")
                 st.rerun()
 
     # 4. Check for Sales History Availability
@@ -160,7 +164,7 @@ def render_demand_forecast_page():
 
     # 6. Filter & Selector Row
     st.markdown('<div class="custom-card" style="padding: 16px 20px; margin-bottom: 20px;">', unsafe_allow_html=True)
-    f_col1, f_col2, f_col3, f_col4 = st.columns([1.6, 1.2, 1.2, 1.0])
+    f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.5, 1.1, 1.1, 0.9, 1.1])
 
     with f_col1:
         selected_prod_label = st.selectbox(
@@ -204,6 +208,11 @@ def render_demand_forecast_page():
             step=1,
             help="Number of future days to forecast (out-of-sample prediction)."
         )
+
+    with f_col5:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🚀 Generate Forecast", type="primary", use_container_width=True, key="btn_generate_forecast"):
+            st.toast(f"✅ Generated {horizon_days}-day demand forecast for {target_name}!", icon="📈")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # 7. Aggregate and Prepare Daily Time Series
