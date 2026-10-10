@@ -89,9 +89,40 @@ NAV_OPTIONS = [
     "📑 Reports"
 ]
 
+# Support query parameters for direct page linking (e.g. ?page=reports, ?page=upload)
+if "page" in st.query_params:
+    param_val = str(st.query_params.get("page", "")).lower().strip()
+    PAGE_PARAM_MAP = {
+        "dashboard": "📊 Dashboard",
+        "dash": "📊 Dashboard",
+        "upload": "📤 Upload Data",
+        "inventory": "📦 Inventory & Expiry",
+        "expiry": "📦 Inventory & Expiry",
+        "forecast": "📈 Demand Forecast",
+        "demand": "📈 Demand Forecast",
+        "recommendations": "🤖 AI Recommendations",
+        "recommendation": "🤖 AI Recommendations",
+        "reports": "📑 Reports",
+        "report": "📑 Reports"
+    }
+    for key, mapped_page in PAGE_PARAM_MAP.items():
+        if key in param_val:
+            st.session_state.current_page = mapped_page
+            break
+
 # Ensure valid page in session state
-if st.session_state.current_page not in NAV_OPTIONS:
+if "current_page" not in st.session_state or st.session_state.current_page not in NAV_OPTIONS:
     st.session_state.current_page = "📊 Dashboard"
+
+# Synchronize sidebar radio with current_page before rendering the widget
+if "sidebar_nav_radio" in st.session_state:
+    if st.session_state.sidebar_nav_radio != st.session_state.current_page:
+        st.session_state.sidebar_nav_radio = st.session_state.current_page
+else:
+    st.session_state.sidebar_nav_radio = st.session_state.current_page
+
+def on_nav_change():
+    st.session_state.current_page = st.session_state.sidebar_nav_radio
 
 # Modern Sidebar Navigation
 with st.sidebar:
@@ -115,19 +146,16 @@ with st.sidebar:
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:#94A3B8; font-weight:700; margin-bottom:8px;'>NAVIGATION</div>", unsafe_allow_html=True)
     
-    current_index = NAV_OPTIONS.index(st.session_state.current_page)
     selected_nav = st.radio(
         label="Select Workspace:",
         options=NAV_OPTIONS,
-        index=current_index,
         label_visibility="collapsed",
-        key="sidebar_nav_radio"
+        key="sidebar_nav_radio",
+        on_change=on_nav_change
     )
     
-    # Sync radio choice to session state
-    if selected_nav != st.session_state.current_page:
-        st.session_state.current_page = selected_nav
-        st.rerun()
+    # Ensure current_page is synchronized with selected_nav
+    st.session_state.current_page = selected_nav
         
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
     

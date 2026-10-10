@@ -15,6 +15,14 @@ def render_scenario_simulator_page():
         badge_text="WHAT-IF STRESS TESTING ENGINE"
     )
     
+    inventory_df = st.session_state.get("inventory_df", None)
+    if inventory_df is None or inventory_df.empty:
+        st.info("ℹ️ Disruption simulations require active inventory records. Please upload store data or load the benchmark network first.")
+        if st.button("📤 Go to Upload Data", type="primary", key="btn_scen_upload"):
+            st.session_state.current_page = "📤 Upload Data"
+            st.rerun()
+        return
+
     st.markdown('<div class="section-header">⚡ Select a Preconfigured Hackathon Disruption Scenario</div>', unsafe_allow_html=True)
     
     scenarios = {

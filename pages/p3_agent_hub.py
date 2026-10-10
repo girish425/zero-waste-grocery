@@ -15,7 +15,13 @@ def render_agent_hub_page():
         badge_text="SPECIALIZED AGENT ARCHITECTURE"
     )
     
-    inventory_df = st.session_state.inventory_df
+    inventory_df = st.session_state.get("inventory_df", None)
+    if inventory_df is None or inventory_df.empty:
+        st.info("ℹ️ No active inventory records available to inspect agent consensus. Please upload store data or load the supermarket benchmark network.")
+        if st.button("📤 Go to Upload Data", type="primary", key="btn_hub_upload"):
+            st.session_state.current_page = "📤 Upload Data"
+            st.rerun()
+        return
     
     # Batch Selector
     st.markdown('<div class="section-header">🔍 Inspect Batch Multi-Agent Reasoning</div>', unsafe_allow_html=True)

@@ -96,6 +96,12 @@ def render_demand_forecast_page():
         </div>
         """, unsafe_allow_html=True)
 
+        col_e1, col_e2, col_e3 = st.columns([1.5, 1.2, 1.5])
+        with col_e2:
+            if st.button("📤 Go to Upload Data", type="primary", use_container_width=True, key="btn_forecast_go_upload"):
+                st.session_state.current_page = "📤 Upload Data"
+                st.rerun()
+
         # Empty Summary Cards
         c1, c2, c3, c4 = st.columns(4)
         with c1:
